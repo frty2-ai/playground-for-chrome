@@ -21,10 +21,11 @@
 <body>
 <div class="wrap">
   <h1>Frty2 Guide for Zoho CRM</h1>
-  <p>The ghost cursor pairs itself when you press <b>Connect the guide</b> on your lesson page. If that did not work, type the code shown there.</p>
+  <p>The ghost cursor pairs itself when you press <b>Connect the guide</b> on your lesson page, so you normally type nothing here.</p>
+  <p>If that button did nothing: the API is the Frty2 backend your lesson page uses (the hosted demo is <code>https://api.frty2.wawm.ai</code>; <code>http://localhost:8080</code> only when the backend runs on this machine). The code is the 8 characters the lesson page shows under “Connect the guide” once you have pressed <b>Begin the lesson</b>.</p>
   <div id="status" class="status">Checking…</div>
   <label for="api">Frty2 API</label>
-  <input id="api" placeholder="https://api.frty2.wawm.ai">
+  <input id="api" placeholder="https://api.frty2.wawm.ai" autocomplete="off" spellcheck="false">
   <label for="code">Pairing code</label>
   <input id="code" placeholder="ABCD 2345" autocomplete="off" spellcheck="false">
   <button id="pair">Pair with code</button>
