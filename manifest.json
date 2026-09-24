@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Frty2 Guide for Zoho CRM",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A ghost cursor that teaches inside your own Zoho CRM: it shows, narrates, hands over, and lets Frty2 verify from Zoho's records.",
   "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": [

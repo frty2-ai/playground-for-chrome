@@ -18,9 +18,13 @@ needed on the demo machine.
 3. **Load unpacked** → choose that folder. "Frty2 Guide for Zoho CRM" appears
    with its icon; pin it from the puzzle-piece menu if you like.
 4. Sign in to the learner app (https://frty2-learner.vercel.app), open the
-   module, **Get my account**, choose the language, **Connect the guide**.
-5. Open https://crm.zoho.in in another tab, signed in as that Zoho user
-   (email one-time code). The ghost cursor appears there.
+   module, **Get my account**, **Open Zoho CRM** and sign in there as that
+   user (email one-time code), back on the lesson choose the language,
+   **Begin the lesson**, then **Connect the guide**.
+5. Switch to the Zoho tab: the ghost cursor's panel is bottom-right.
+
+The whole demo, with what can go wrong at each step, is written up in
+[`docs/plan/zoho-demo.md`](https://github.com/frty2-ai/playground/blob/main/docs/plan/zoho-demo.md).
 
 To update later: download the ZIP again and use the extension card's reload
 button after replacing the folder (or Load unpacked the new folder).
@@ -36,8 +40,13 @@ button after replacing the folder (or Load unpacked the new folder).
 - **Automatic:** the lesson page's **Connect the guide** button posts the
   session id, the learner's token and the API base to `bridge.js`, which the
   service worker stores. Any `crm.zoho.*` tab then shows the guide.
-- **Fallback:** click the extension icon, enter the API address and the
-  8-character code shown on the lesson page.
+- **Fallback:** click the extension icon (puzzle piece → Frty2 Guide). The
+  API address is the backend the lesson page talks to, pre-filled from the
+  page's own ping (`https://api.frty2.wawm.ai` for the hosted demo;
+  `http://localhost:8080` only when the backend runs on your machine). The
+  code is the 8 characters the lesson page shows under **Connect the guide**
+  once **Begin the lesson** has been pressed; it is single-use, lives 15
+  minutes, and the page renews it while it is open.
 
 ## Files
 

@@ -11,6 +11,11 @@ window.addEventListener('message', (event) => {
   if (!data || typeof data !== 'object') return;
 
   if (data.type === 'frty2:ping') {
+    // The page says which Frty2 API it talks to; the popup's manual pairing
+    // form is pre-filled with it, so nobody has to know the address.
+    if (typeof data.api_base === 'string' && /^https?:\/\//.test(data.api_base)) {
+      chrome.storage.local.set({frty2_api_base: data.api_base.replace(/\/$/, '')});
+    }
     window.postMessage({type: 'frty2:pong', version: chrome.runtime.getManifest().version}, '*');
     return;
   }

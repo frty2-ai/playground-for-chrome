@@ -1,3 +1,7 @@
+// The hosted Frty2 API. The lesson page announces the one it actually uses
+// (bridge.js stores it as `frty2_api_base`), so this is only the last resort.
+const DEFAULT_API = 'https://api.frty2.wawm.ai';
+
 const statusEl = document.getElementById('status');
 const apiEl = document.getElementById('api');
 const codeEl = document.getElementById('code');
@@ -14,9 +18,9 @@ function refresh() {
       show(`Paired with session #${pairing.session_id} (${pairing.language === 'hi' ? 'Hindi' : 'English'}). Open your Zoho CRM tab.`, 'ok');
       apiEl.value = pairing.api_base || '';
     } else {
-      show('Not paired yet.', '');
+      show('Not paired yet. Open your lesson page and press “Connect the guide”; use the form below only if that button does nothing.', '');
       chrome.storage.local.get('frty2_api_base', (stored) => {
-        apiEl.value = stored.frty2_api_base || 'http://localhost:8080';
+        apiEl.value = stored.frty2_api_base || DEFAULT_API;
       });
     }
   });
