@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Frty2 Guide for Zoho CRM",
+  "version": "0.1.0",
+  "description": "A ghost cursor that teaches inside your own Zoho CRM: it shows, narrates, hands over, and lets Frty2 verify from Zoho's records.",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://*.zoho.in/*",
+    "https://*.zoho.com/*",
+    "https://*.zoho.eu/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://*.wawm.ai/*",
+    "https://*.vercel.app/*",
+    "https://*.trycloudflare.com/*"
+  ],
+  "background": {"service_worker": "background.js"},
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Frty2 Guide"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://crm.zoho.in/*", "https://crm.zoho.com/*", "https://crm.zoho.eu/*",
+                  "https://crmsandbox.zoho.in/*", "https://crmsandbox.zoho.com/*"],
+      "js": ["ghost.js"],
+      "css": ["ghost.css"],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": ["http://localhost/*", "http://127.0.0.1/*", "https://*.wawm.ai/*",
+                  "https://*.vercel.app/*"],
+      "js": ["bridge.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "icons": {"16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png"}
+}

@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Frty2 Guide</title>
+<style>
+  body { font: 14px/1.4 system-ui, sans-serif; margin: 0; width: 320px; color: #1c1c1e; }
+  .wrap { padding: 16px; }
+  h1 { font-size: 15px; margin: 0 0 4px; }
+  p { margin: 6px 0; color: #444; }
+  label { display: block; font-size: 12px; color: #666; margin-top: 12px; }
+  input { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #c9c9cf; border-radius: 6px; font-size: 14px; margin-top: 4px; }
+  button { margin-top: 10px; width: 100%; padding: 9px; border: 0; border-radius: 6px; background: #1f6feb; color: #fff; font-size: 14px; cursor: pointer; }
+  button.secondary { background: #eee; color: #222; }
+  .status { padding: 10px; border-radius: 8px; background: #f2f7ff; margin-top: 8px; font-size: 13px; }
+  .status.ok { background: #e9f8ee; }
+  .status.err { background: #fdeceb; }
+  code { font-family: ui-monospace, monospace; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Frty2 Guide for Zoho CRM</h1>
+  <p>The ghost cursor pairs itself when you press <b>Connect the guide</b> on your lesson page. If that did not work, type the code shown there.</p>
+  <div id="status" class="status">Checking…</div>
+  <label for="api">Frty2 API</label>
+  <input id="api" placeholder="https://api.frty2.wawm.ai">
+  <label for="code">Pairing code</label>
+  <input id="code" placeholder="ABCD 2345" autocomplete="off" spellcheck="false">
+  <button id="pair">Pair with code</button>
+  <button id="unpair" class="secondary">Disconnect</button>
+</div>
+<script src="popup.js"></script>
+</body>
+</html>

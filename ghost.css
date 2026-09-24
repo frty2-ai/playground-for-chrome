@@ -1,0 +1,2 @@
+/* The overlay lives in a shadow root (see ghost.js), so only the host is styled here. */
+#frty2-ghost-host { all: initial; position: fixed; inset: 0; width: 0; height: 0; z-index: 2147483000; pointer-events: none; }
