@@ -1,2 +1,21 @@
-/* The overlay lives in a shadow root (see ghost.js), so only the host is styled here. */
-#frty2-ghost-host { all: initial; position: fixed; inset: 0; width: 0; height: 0; z-index: 2147483000; pointer-events: none; }
+/* The overlay lives in a shadow root (see ghost.js); only the host is styled
+   here. It is a manual popover in the top layer: these undo the browser's
+   popover box (border, padding, centring) and anything Zoho sets on divs. */
+#frty2-ghost-host {
+  all: initial;
+  display: block !important;
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+  z-index: 2147483647 !important;
+}
+#frty2-ghost-host::backdrop { display: none !important; }

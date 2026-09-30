@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frty2 Watch recordings</title>
+<style>
+  :root { --ink: #111827; --muted: #6b7280; --line: #e5e7eb; --bg: #f9fafb; --card: #fff; --rec: #e11d48; --ok: #059669; --warn: #b45309; --blue: #1f6feb; }
+  [hidden] { display: none !important; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 28px 16px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; display: flex; align-items: center; gap: 10px; }
+  h1 .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--rec); }
+  h2 { font-size: 15px; margin: 0 0 8px; }
+  p { margin: 4px 0; color: #374151; }
+  .lede { color: var(--muted); margin-bottom: 20px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin: 14px 0; }
+  section.setup { border-color: #fecdd3; background: #fff1f2; }
+  .perm { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid #fecdd3; }
+  .perm:first-of-type { border-top: 0; }
+  .perm small { display: block; color: var(--muted); }
+  .yes { color: var(--ok); font-weight: 600; white-space: nowrap; }
+  .no { color: var(--warn); font-weight: 600; white-space: nowrap; }
+  button { font: 600 13px/1 inherit; font-family: inherit; padding: 9px 14px; border-radius: 8px; border: 1px solid #d1d5db; background: #fff; color: var(--ink); cursor: pointer; }
+  button:hover { background: #f3f4f6; }
+  button.primary { background: var(--rec); border-color: var(--rec); color: #fff; }
+  button.primary:hover { background: #be123c; }
+  button.blue { background: var(--blue); border-color: var(--blue); color: #fff; }
+  button.danger { color: #b91c1c; }
+  button:disabled { opacity: .5; cursor: default; }
+  .msg { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: #eff6ff; }
+  .msg.err { background: #fef2f2; color: #991b1b; }
+  .msg.ok { background: #ecfdf5; color: #065f46; }
+  form { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; align-items: end; }
+  label { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+  input { font: inherit; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; width: 100%; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .spread { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .rec { border-radius: 12px; }
+  .rec.current { outline: 2px solid var(--blue); }
+  .rec .title { font-weight: 600; font-size: 15px; }
+  .badge { font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: #f3f4f6; color: #374151; white-space: nowrap; }
+  .badge.live { background: #ffe4e6; color: var(--rec); }
+  .badge.cut { background: #fef3c7; color: var(--warn); }
+  .badge.saved { background: #ecfdf5; color: var(--ok); }
+  .sub { color: var(--muted); font-size: 13px; word-break: break-all; }
+  .stats { display: flex; gap: 14px; flex-wrap: wrap; margin: 8px 0; font-size: 13px; }
+  .stats b { font-variant-numeric: tabular-nums; }
+  .upload { font-size: 13px; margin: 6px 0 10px; }
+  .empty { color: var(--muted); text-align: center; padding: 28px; }
+  kbd { font: 12px ui-monospace, monospace; background: #f3f4f6; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
+  @media (max-width: 640px) { form { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1><span class="dot"></span>Frty2 Watch</h1>
+  <p class="lede">Recordings of an expert using an application while explaining it. Each one is saved on this computer as it is made,
+    and uploads to Frty2 while you record when Watch is linked to an expert session (or you are signed in as a Backstage author).
+    <span id="keys"></span></p>
+
+  <section class="setup" id="eyes" hidden>
+    <h2>Let the tutor see your screen</h2>
+    <p>When you ask the tutor something, it looks at your screen once to answer you. Chrome needs your permission for that. Nothing is seen when you are not talking to it.</p>
+    <div class="row" style="margin-top:10px"><button class="primary" id="allowEyes">Allow</button> <button id="notNow">Not now</button></div>
+    <div class="msg" id="eyesMsg" hidden></div>
+  </section>
+
+  <section class="setup" id="setup" hidden>
+    <h2>Two permissions, asked once</h2>
+    <div class="perm"><div>Read the pages you record<small>So Watch can write down what you click and type (never passwords).</small></div><span id="permAccess" class="no">Not yet</span></div>
+    <div class="perm"><div>Your microphone<small>Your explanation is the most important part of the recording.</small></div><span id="permMic" class="no">Not yet</span></div>
+    <div class="row" style="margin-top:10px"><button class="primary" id="allow">Allow and start watching</button></div>
+    <div class="msg" id="setupMsg" hidden></div>
+  </section>
+
+  <section id="account">
+    <div class="spread">
+      <div><h2>Where new recordings go</h2><p id="accountLine">Checking…</p></div>
+      <div class="row" id="accountActions"></div>
+    </div>
+    <form id="signin" hidden>
+      <label>Frty2 API<input id="api" autocomplete="off" spellcheck="false" placeholder="https://api.frty2.wawm.ai"></label>
+      <label>Backstage email<input id="email" type="email" autocomplete="username"></label>
+      <label>Password<input id="password" type="password" autocomplete="current-password"></label>
+      <button class="blue" type="submit">Sign in</button>
+    </form>
+    <div class="msg" id="accountMsg" hidden></div>
+  </section>
+
+  <div id="list"></div>
+</main>
+<script src="watch-store.js"></script>
+<script src="watch-page.js"></script>
+</body>
+</html>

@@ -4,23 +4,92 @@
 <meta charset="utf-8">
 <title>Frty2 Guide</title>
 <style>
-  body { font: 14px/1.4 system-ui, sans-serif; margin: 0; width: 320px; color: #1c1c1e; }
+  [hidden] { display: none !important; }
+  body { font: 14px/1.4 system-ui, sans-serif; margin: 0; width: 340px; color: #1c1c1e; }
   .wrap { padding: 16px; }
   h1 { font-size: 15px; margin: 0 0 4px; }
+  h1 small { font-weight: 500; color: #6b7280; font-size: 12px; }
   p { margin: 6px 0; color: #444; }
   label { display: block; font-size: 12px; color: #666; margin-top: 12px; }
-  input { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #c9c9cf; border-radius: 6px; font-size: 14px; margin-top: 4px; }
+  input, select { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #c9c9cf; border-radius: 6px; font-size: 14px; margin-top: 4px; background: #fff; }
   button { margin-top: 10px; width: 100%; padding: 9px; border: 0; border-radius: 6px; background: #1f6feb; color: #fff; font-size: 14px; cursor: pointer; }
   button.secondary { background: #eee; color: #222; }
+  button.rec { background: #e11d48; font-weight: 600; }
+  button.rec:hover { background: #be123c; }
   .status { padding: 10px; border-radius: 8px; background: #f2f7ff; margin-top: 8px; font-size: 13px; }
   .status.ok { background: #e9f8ee; }
   .status.err { background: #fdeceb; }
   code { font-family: ui-monospace, monospace; }
+  hr { border: 0; border-top: 1px solid #e5e7eb; margin: 0; }
+  .watch { background: #fff7f8; }
+  .small { font-size: 12px; color: #6b7280; margin-top: 8px; }
+  .small a { color: #1f6feb; }
+  .live { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: #111827; color: #fff; font-weight: 600; }
+  .live .dot { width: 11px; height: 11px; border-radius: 50%; background: #9ca3af; }
+  .live.recording .dot, .live.trouble .dot { background: #e11d48; animation: blink 1.4s ease-in-out infinite; }
+  .live.paused .dot { background: #f59e0b; }
+  @keyframes blink { 50% { opacity: .35; } }
+  .live .time { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 500; color: #d1d5db; }
+  .row { display: flex; gap: 6px; }
+  .row button { flex: 1; }
+  .row button.stop { background: #dc2626; }
+  .note { font-size: 12px; color: #92400e; margin-top: 6px; }
+  .session { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px; background: #fff; border: 1px solid #fecdd3; margin: 6px 0 4px; }
+  .session small { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #be123c; font-weight: 600; }
+  .session span { font-size: 12px; color: #6b7280; }
+  .session .brief { color: #374151; white-space: pre-wrap; max-height: 72px; overflow: auto; }
+  details { margin-top: 10px; font-size: 12px; color: #6b7280; }
+  summary { cursor: pointer; }
 </style>
 </head>
 <body>
+<div class="wrap watch">
+  <h1>Watch <small>record an expert using this app</small></h1>
+  <div id="watchIdle">
+    <div class="session" id="wSession" hidden>
+      <small>Expert session</small>
+      <b id="wSessionTitle"></b>
+      <span id="wSessionApp"></span>
+      <span class="brief" id="wSessionBrief"></span>
+      <div class="row"><button id="wOpenApp" class="secondary">Open the app</button><button id="wUnlink" class="secondary">Unlink</button></div>
+    </div>
+    <p id="wHow">Use the application and explain out loud what you do and why. Frty2 records the screen, your voice and every click.</p>
+    <div id="wFree">
+      <label for="wTitle">What will you show?</label>
+      <input id="wTitle" placeholder="Convert a walk-in lead into a deal" autocomplete="off">
+      <label for="wLang">You will speak</label>
+      <select id="wLang">
+        <option value="hi,en">Hindi and English</option>
+        <option value="en">English</option>
+        <option value="hi">Hindi</option>
+      </select>
+    </div>
+    <button id="wStart" class="rec">● Start watching this tab</button>
+    <details id="wCodeBox">
+      <summary>Have a session code?</summary>
+      <label for="wApi">Frty2 API</label>
+      <input id="wApi" placeholder="https://api.frty2.wawm.ai" autocomplete="off" spellcheck="false">
+      <label for="wCode">Session code</label>
+      <input id="wCode" placeholder="ABCD 2345" autocomplete="off" spellcheck="false">
+      <button id="wLink" class="secondary">Link this session</button>
+    </details>
+  </div>
+  <div id="watchLive" hidden>
+    <div class="live" id="wLive"><span class="dot"></span><span id="wState">Watching</span><span class="time" id="wTime"></span></div>
+    <div class="note" id="wNote" hidden></div>
+    <div class="row" id="wHere">
+      <button id="wStep" class="secondary">Step</button>
+      <button id="wPause" class="secondary">Private</button>
+      <button id="wStop" class="stop">Stop</button>
+    </div>
+    <button id="wGo" class="secondary" hidden>Go to the watched tab</button>
+  </div>
+  <div id="wMsg" class="status err" hidden></div>
+  <div class="small"><span id="wAccount"></span> · <a href="#" id="wLibrary">Recordings</a></div>
+</div>
+<hr>
 <div class="wrap">
-  <h1>Frty2 Guide for Zoho CRM</h1>
+  <h1>Learner guide <small>for Zoho CRM lessons</small></h1>
   <p>The ghost cursor pairs itself when you press <b>Connect the guide</b> on your lesson page, so you normally type nothing here.</p>
   <p>If that button did nothing: the API is the Frty2 backend your lesson page uses (the hosted demo is <code>https://api.frty2.wawm.ai</code>; <code>http://localhost:8080</code> only when the backend runs on this machine). The code is the 8 characters the lesson page shows under “Connect the guide” once you have pressed <b>Begin the lesson</b>.</p>
   <div id="status" class="status">Checking…</div>

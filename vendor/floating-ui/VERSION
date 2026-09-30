@@ -1,0 +1,2 @@
+@floating-ui/core 1.8.0 and @floating-ui/dom 1.8.0 (MIT), UMD builds copied unchanged from the npm tarballs on 29 Sep 2026.
+They define the globals FloatingUICore and FloatingUIDOM in the content script world; tutor-overlay.js uses them for placement.
