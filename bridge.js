@@ -8,7 +8,8 @@
  * `frty2:tutor_start` / `frty2:tutor_stop` (Backstage's "Try it in the app"),
  * which start the live tutor in the byte's app tab (optional `mode`: "demo",
  * the tutor does each step, or "follow", the learner does it after the
- * tutor's line); the page hears back `frty2:tutor_started {ok, error?, detail?, mic?}`.
+ * tutor's line); the page hears back `frty2:tutor_started {ok, error?, detail?, mic?}`
+ * and, when that lesson ends, `frty2:tutor_ended {byte_id, reason, done}`.
  */
 
 window.addEventListener('message', (event) => {
@@ -34,7 +35,10 @@ window.addEventListener('message', (event) => {
   // Backstage (or the public recording page) links Watch to an expert
   // session: recordings then upload into that session with its link token.
   if (data.type === 'frty2:watch_session' && typeof data.token === 'string' && typeof data.api_base === 'string') {
-    chrome.runtime.sendMessage({type: 'watch_link', api_base: data.api_base.replace(/\/$/, ''), token: data.token}, (reply) => {
+    // `web_base` is this page's own address (Backstage): where the module's
+    // learner link will live, for the recordings page to show when it is ready.
+    chrome.runtime.sendMessage({type: 'watch_link', api_base: data.api_base.replace(/\/$/, ''), token: data.token,
+                                web_base: window.location.origin}, (reply) => {
       void chrome.runtime.lastError;
       window.postMessage({type: 'frty2:watch_linked', ok: Boolean(reply && reply.ok), error: reply && (reply.detail || reply.error),
                           session: reply && reply.link ? reply.link.session : null}, '*');
@@ -60,6 +64,15 @@ window.addEventListener('message', (event) => {
   if (data.type === 'frty2:unpair') {
     chrome.runtime.sendMessage({type: 'unpair'}, () => void chrome.runtime.lastError);
   }
+});
+
+// A lesson this page started has ended (finished, stopped, its tab closed):
+// the module page uses it to offer the next lesson.
+chrome.runtime.onMessage.addListener((message) => {
+  if (message && message.type === 'tutor_ended') {
+    window.postMessage({type: 'frty2:tutor_ended', byte_id: message.byte_id, reason: message.reason, done: Boolean(message.done)}, '*');
+  }
+  return false;
 });
 
 // Announce presence once, for pages that loaded before the listener.

@@ -49,6 +49,36 @@
   .stats b { font-variant-numeric: tabular-nums; }
   .upload { font-size: 13px; margin: 6px 0 10px; }
   .empty { color: var(--muted); text-align: center; padding: 28px; }
+  /* From a recording to lessons: five steps, one of them being worked on. */
+  .pipeline { margin: 10px 0 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: #f9fafb; }
+  .pipeline.now { border-color: #bfdbfe; background: #eff6ff; }
+  .pipeline.done { border-color: #a7f3d0; background: #ecfdf5; }
+  .pipeline.bad { border-color: #fecaca; background: #fef2f2; }
+  .pipeline.wait { border-color: #fde68a; background: #fffbeb; }
+  .steps { list-style: none; display: flex; margin: 0 0 10px; padding: 0; }
+  .steps li { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; font-size: 12px; color: var(--muted); text-align: center; }
+  .steps li + li::before { content: ""; position: absolute; top: 11px; right: 50%; width: 100%; height: 2px; background: var(--line); }
+  .steps li.done + li::before, .steps li.done + li.now::before { background: var(--ok); }
+  .steps .mark { position: relative; z-index: 1; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 12px; background: #fff; border: 2px solid var(--line); color: var(--muted); }
+  .steps li.done .mark { background: var(--ok); border-color: var(--ok); color: #fff; }
+  .steps li.now .mark { border-color: var(--blue); color: var(--blue); animation: pulse 1.8s ease-in-out infinite; }
+  .steps li.bad .mark { background: #dc2626; border-color: #dc2626; color: #fff; }
+  .steps li.wait .mark { border-color: #d97706; color: #d97706; }
+  .steps li.done .name, .steps li.now .name { color: var(--ink); font-weight: 600; }
+  .stage { display: flex; gap: 10px; align-items: flex-start; }
+  .stage b { display: block; }
+  .stage span { color: #374151; font-size: 13px; }
+  .spin { flex: none; width: 16px; height: 16px; margin-top: 2px; border-radius: 50%; border: 2px solid #bfdbfe; border-top-color: var(--blue); animation: spin .9s linear infinite; }
+  .bar { height: 6px; border-radius: 999px; background: #dbeafe; margin-top: 10px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--blue); border-radius: 999px; transition: width .4s ease; }
+  .link { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .link code { flex: 1 1 260px; min-width: 0; padding: 8px 10px; border-radius: 8px; background: #fff; border: 1px solid #a7f3d0; font: 12px ui-monospace, monospace; word-break: break-all; }
+  a.btn { font: 600 13px/1 inherit; font-family: inherit; padding: 9px 14px; border-radius: 8px; text-decoration: none; display: inline-block; }
+  a.btn.blue { background: var(--blue); color: #fff; }
+  button.locked:disabled { opacity: .75; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(31, 111, 235, .35); } 50% { box-shadow: 0 0 0 6px rgba(31, 111, 235, 0); } }
+  @media (prefers-reduced-motion: reduce) { .spin, .steps li.now .mark { animation: none; } }
   kbd { font: 12px ui-monospace, monospace; background: #f3f4f6; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
   @media (max-width: 640px) { form { grid-template-columns: 1fr; } }
 </style>
@@ -58,6 +88,7 @@
   <h1><span class="dot"></span>Frty2 Watch</h1>
   <p class="lede">Recordings of an expert using an application while explaining it. Each one is saved on this computer as it is made,
     and uploads to Frty2 while you record when Watch is linked to an expert session (or you are signed in as a Backstage author).
+    Once it is uploaded, Frty2 turns it into lessons and a link for learners by itself: this page shows how far it has got.
     <span id="keys"></span></p>
 
   <section class="setup" id="eyes" hidden>

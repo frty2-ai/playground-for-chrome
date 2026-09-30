@@ -62,7 +62,7 @@ pill and the recordings page show the ones actually assigned; change them at
 step, `Alt+Shift+M` private, `Alt+Shift+U` oops (drop the last 10 s).
 
 **Expert sessions.** Backstage (Web apps → Expert capture) registers an app
-and plans sessions in it. A session page's **Link Watch to this session**, or
+and plans sessions in it. A session page's **Record now in <app>**, or
 the public recording page its link opens (`/record/<token>`, for an expert
 with no Backstage account), hands the extension the session: the popup then
 shows what to record and **Open the app**, and recordings upload into that
@@ -77,6 +77,21 @@ with `screen.webm`, `voice.webm`, `events.jsonl`, `speech.json`,
 delete. Sign in there with a Backstage author account and recordings upload
 while they are made, to `/api/v1/webapps/backstage/captures/` (parts are
 write-once, so uploads resume blindly after any crash).
+
+**From Stop to a learner link.** Each recording on that page shows five
+steps: Upload, Analyse, Write lessons, Check, Ready. The first happens in the
+extension; the rest happen on the server by themselves once it has every part
+(`core_4ACL/webapps/pipeline.py`), and the page follows them from the
+capture's `lessons` status until it can show the module's learner link. There
+is one button, **Upload and build lessons**. It is already locked and reads
+"Uploading…" when the recording was uploading as it was made (a linked
+session, or a sign-in); otherwise pressing it starts the upload. Either way it
+cannot be pressed twice: it names the step under way ("Analysing…", "Writing
+lessons…") until the lessons are ready. An upload that was started finishes
+without this page: the recorder keeps sending while its offscreen document
+lives, and the service worker's one-minute alarm takes over after a browser
+restart (`resumeUploads`). `WatchStore.sync` holds a Web Lock per recording,
+so only one of the three sends it at a time.
 
 Not yet: masking pixels in the video and frames (use **Private**), browser
 `alert`/`confirm` dialogs, hover menus. The pill itself appears in the video.
@@ -220,8 +235,8 @@ button after replacing the folder (or Load unpacked the new folder).
 | `watch.js` | Watch in the page: the event log (every frame of the watched tab) and the indicator (top frame). |
 | `watch-recorder.js` | Watch's recorder, in the offscreen document: tab video, voice, frames, voice activity, heartbeat, upload. |
 | `watch-level-worklet.js` | Microphone level on the audio thread; its messages also pace the heartbeat. |
-| `watch-store.js` | IndexedDB storage, the bundle zip, and the resumable upload. |
-| `watch.html` / `watch-page.js` | Permissions, the upload sign-in, and the recordings on this computer. |
+| `watch-store.js` | IndexedDB storage, the bundle zip, the resumable upload (one sender at a time), and the lessons status. |
+| `watch.html` / `watch-page.js` | Permissions, the upload sign-in, and the recordings on this computer: each one's way from upload to a learner link. |
 | `tutor.js` | The live tutor in the learner's app tab: cursor and target resolver, action timing, DOM events, panel, frames. |
 | `tutor-audio.js` | The tutor's WebSocket, microphone and speaker, in the offscreen document; decides when speech starts and ends. |
 | `tutor-mic-worklet.js` | Microphone to 16 kHz PCM16 in 40 ms frames, on the audio thread. |

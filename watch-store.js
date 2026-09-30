@@ -3,7 +3,7 @@
  * offscreen document) and the recordings page (watch.html). One IndexedDB
  * database in the extension's origin:
  *
- *   recordings  {id, state, t0, started_at, ended_at, duration_ms, meta, counts, bytes, upload}
+ *   recordings  {id, state, t0, started_at, ended_at, duration_ms, meta, counts, bytes, upload, lessons}
  *   parts       {rid, stream, seq, t, mime, blob | text, size, uploaded}
  *
  * Streams: `video` and `audio` are MediaRecorder chunks (concatenate in seq
@@ -113,6 +113,10 @@ const WatchStore = (() => {
   async function countPending(rid) {
     const index = (await store('parts', 'readonly')).index('pending');
     return done(index.count(IDBKeyRange.only([rid, 0])));
+  }
+
+  async function countParts(rid) {
+    return done((await store('parts', 'readonly')).index('rid').count(IDBKeyRange.only(rid)));
   }
 
   async function markParts(rid, stream, seqs, uploaded) {
@@ -318,14 +322,27 @@ masked: use "Private" (pause) while such things are on screen.
     return {status: response.status, data};
   }
 
+  const CAPTURES = '/api/v1/webapps/backstage/captures/';
+
   /**
    * Push whatever the server does not have yet. Safe to call from several
    * places at once and after any crash: the server keys every part by
-   * (recording, stream, seq) and ignores exact repeats.
+   * (recording, stream, seq) and ignores exact repeats. Only one caller
+   * uploads a recording at a time (the recorder, the recordings page and the
+   * service worker's alarm all call this): the others are told `busy` and
+   * wait, so a recording is never sent twice over.
    */
-  async function sync(id, account, {limit = 400} = {}) {
+  async function sync(id, account, options = {}) {
     if (!account || !account.token || !account.api_base) return {ok: false, code: 'no_account'};
-    const base = '/api/v1/webapps/backstage/captures/';
+    if (typeof navigator === 'undefined' || !navigator.locks) return syncNow(id, account, options);
+    return navigator.locks.request(`frty2-upload-${id}`, {ifAvailable: true}, async (lock) => {
+      if (!lock) return {ok: true, busy: true, sent: 0, pending: await countPending(id), finished: false};
+      return syncNow(id, account, options);
+    });
+  }
+
+  async function syncNow(id, account, {limit = 400} = {}) {
+    const base = CAPTURES;
     try {
       let recording = await getRecording(id);
       if (!recording) return {ok: false, code: 'missing'};
@@ -371,7 +388,11 @@ masked: use "Private" (pause) while such things are on screen.
           meta: {...recording.meta, counts: recording.counts, streams: recording.streams, pauses: recording.pauses},
         });
         if (finished.status !== 200) throw new UploadError('refused', `The server did not accept the end of the recording (${finished.status}).`);
-        await updateRecording(id, (r) => ({...r, upload: {...(r.upload || {}), finished: true, error: null, at: Date.now()}}));
+        // The server's answer already says what happens next (the lessons
+        // are queued the moment it learns the recording is complete).
+        const lessons = finished.data && finished.data.lessons ? {...finished.data.lessons, at: Date.now()} : null;
+        await updateRecording(id, (r) => ({...r, upload: {...(r.upload || {}), finished: true, error: null, at: Date.now()},
+                                           lessons: lessons || r.lessons || null}));
       } else {
         await updateRecording(id, (r) => ({...r, upload: {...(r.upload || {}), error: null, at: Date.now()}}));
       }
@@ -383,8 +404,48 @@ masked: use "Private" (pause) while such things are on screen.
     }
   }
 
+  // ---------------------------------------------------------------- lessons
+
+  /**
+   * What the server is doing with an uploaded recording: understanding it,
+   * writing lessons, the module link, or why nothing was built. Kept on the
+   * recording, so the page shows the last known answer before it asks again.
+   */
+  async function lessons(id, account) {
+    if (!account || !account.token || !account.api_base) return {ok: false, code: 'no_account'};
+    try {
+      const reply = await request(account, 'GET', `${CAPTURES}${id}/`);
+      if (reply.status !== 200 || !reply.data || !reply.data.lessons) {
+        return {ok: false, code: reply.status === 404 ? 'missing' : 'refused', detail: `The server answered ${reply.status}.`};
+      }
+      const status = {...reply.data.lessons, at: Date.now()};
+      await updateRecording(id, (r) => ({...r, lessons: status}));
+      return {ok: true, lessons: status};
+    } catch (error) {
+      return {ok: false, code: error.code || 'error', detail: error.message};
+    }
+  }
+
+  /** A recording still marked "recording" that no recorder is running was cut
+   *  short (browser closed, extension reloaded). Close it with what arrived. */
+  async function closeOrphan(rec) {
+    const parts = await partsOf(rec.id);
+    const last = parts.reduce((max, p) => Math.max(max, p.t || 0), 0);
+    const bytes = parts.reduce((sum, p) => sum + (p.size || 0), 0);
+    const frames = parts.filter((p) => p.stream === 'frames').length;
+    // Counts come from the recorder's last checkpoint (at most 5 s old); the
+    // parts themselves are the truth for size, length and frames.
+    return updateRecording(rec.id, (r) => (r.state !== 'recording' ? r : {
+      ...r, state: 'interrupted', ended_at: Math.round(r.t0 + last), duration_ms: Math.round(last), bytes,
+      counts: {...(r.counts || {}), frames}, end_reason: 'the recorder stopped without saving (browser closed or extension reloaded)',
+    }));
+  }
+
+  /** Errors that another attempt cannot fix: the expert has to do something. */
+  const FATAL = ['signed_out', 'not_author', 'no_account', 'link_revoked'];
+
   return {
     open, putRecording, getRecording, listRecordings, updateRecording, deleteRecording,
-    putPart, partsOf, pendingParts, countPending, markParts, bundle, frameFile, sync,
+    putPart, partsOf, pendingParts, countPending, countParts, markParts, bundle, frameFile, sync, lessons, closeOrphan, FATAL,
   };
 })();

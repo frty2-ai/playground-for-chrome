@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Frty2 Guide for Zoho CRM",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Frty2 inside the application: a ghost cursor that teaches learners in their own Zoho CRM, Watch, which records an expert using an app while they explain it, and a live voice tutor in any app.",
   "permissions": [
     "storage",
     "unlimitedStorage",
+    "alarms",
     "activeTab",
     "scripting",
     "offscreen",

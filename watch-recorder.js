@@ -122,7 +122,7 @@
       counts: rec.counts, bytes: 0, pauses: [], streams: {},
       // A session's link token is kept with the recording, so an upload cut
       // short can finish later even after the extension links elsewhere.
-      upload: upload ? {api_base: upload.api_base, kind: upload.kind,
+      upload: upload ? {api_base: upload.api_base, kind: upload.kind, web_base: upload.web_base || null,
                         ...(upload.kind === 'session' ? {token: upload.token, session_id: upload.session_id} : {})} : null,
     });
 
@@ -548,17 +548,24 @@
     } finally { uploading = false; }
   }
 
-  /** After the watch ends, keep sending until the server has everything. */
+  /** After the watch ends, keep sending until the server has everything.
+   *  Someone else uploading it (the recordings page, the worker's alarm) is
+   *  not a failure: wait for them. Errors back off; an hour is the limit, and
+   *  the worker's alarm carries on from there. */
   async function drainUploads(id, account) {
-    for (let attempt = 0; attempt < 40; attempt += 1) {
+    const deadline = Date.now() + 60 * 60 * 1000;
+    let failures = 0;
+    while (Date.now() < deadline && failures < 40) {
       while (uploading) await new Promise((r) => setTimeout(r, 500));
       uploading = true;
       let result;
       try { result = await WatchStore.sync(id, account, {limit: 400}); } finally { uploading = false; }
       chrome.runtime.sendMessage({type: 'watch_upload', id, result}).catch(() => {});
       if (result.ok && result.finished) return;
-      if (!result.ok && ['signed_out', 'not_author', 'no_account', 'link_revoked'].includes(result.code)) return;
-      await new Promise((r) => setTimeout(r, result.ok ? 200 : Math.min(60000, 2000 * (attempt + 1))));
+      if (!result.ok && WatchStore.FATAL.includes(result.code)) return;
+      if (!result.ok) failures += 1;
+      const wait = result.busy ? 2000 : result.ok ? 200 : Math.min(60000, 2000 * failures);
+      await new Promise((r) => setTimeout(r, wait));
     }
   }
 

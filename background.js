@@ -17,6 +17,10 @@
  * tutor (the "tutor" section at the end, tutor.js and tutor-audio.js).
  */
 
+// Recordings live in IndexedDB behind WatchStore; the worker reads them only
+// to finish an upload nobody else is finishing (see resumeUploads).
+importScripts('watch-store.js');
+
 const KEY = 'frty2_pairing';
 
 async function getPairing() {
@@ -389,7 +393,7 @@ async function startWatch(tabId, meta = {}) {
     // A linked expert session wins: its recordings belong to it.
     const link = stored[SESSION_KEY] && stored[SESSION_KEY].token ? stored[SESSION_KEY] : null;
     const session = link ? link.session : null;
-    const upload = link ? {kind: 'session', api_base: link.api_base, token: link.token, session_id: session.id}
+    const upload = link ? {kind: 'session', api_base: link.api_base, token: link.token, session_id: session.id, web_base: link.web_base || null}
       : account ? {kind: 'account', api_base: account.api_base, token: account.token} : null;
     const reply = await recorder({
       type: 'start', streamId, tabId, upload, viewport: {width: tab.width, height: tab.height},
@@ -479,7 +483,9 @@ async function handleWatchMessage(message, sender) {
     case 'watch_upload':
       return {ok: true};
     case 'watch_link':
-      return linkSession(message.api_base, {token: message.token});
+      return linkSession(message.api_base, {token: message.token, webBase: message.web_base});
+    case 'watch_resume_uploads':
+      return resumeUploads();
     case 'watch_link_code':
       return linkSession(message.api_base, {code: message.code});
     case 'watch_unlink':
@@ -502,7 +508,7 @@ async function handleWatchMessage(message, sender) {
 
 /** Link Watch to an expert session, by its link token or its short code.
  *  The server is asked either way, so only a live session is ever stored. */
-async function linkSession(apiBase, {token, code}) {
+async function linkSession(apiBase, {token, code, webBase}) {
   const base = (apiBase || '').replace(/\/$/, '');
   if (!/^https?:\/\//.test(base)) return {ok: false, error: 'bad_api', detail: 'That is not an API address.'};
   let response;
@@ -517,7 +523,9 @@ async function linkSession(apiBase, {token, code}) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return {ok: false, error: data.reason || 'refused', detail: data.detail || `Linking failed (${response.status}).`};
   const {token: pairedToken, ...session} = data;
-  const link = {api_base: base, token: token || pairedToken, session, linked_at: Date.now()};
+  // `web_base`: the Backstage page that linked it, if one did (a typed code has none).
+  const link = {api_base: base, token: token || pairedToken, session, linked_at: Date.now(),
+                web_base: /^https?:\/\//.test(webBase || '') ? webBase.replace(/\/$/, '') : null};
   await chrome.storage.local.set({[SESSION_KEY]: link, frty2_api_base: base});
   return {ok: true, link};
 }
@@ -563,6 +571,49 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
   }
 });
 
+// An upload that was under way must finish with nobody watching: the expert
+// may quit Chrome straight after Stop, and the lessons only start building
+// once the server has every part. The recorder keeps sending while its
+// offscreen document lives and the recordings page while it is open; this
+// alarm is what is left when neither is. It never starts an upload the expert
+// did not start (that is the Upload button's job), and WatchStore.sync lets
+// only one of the three send a recording at a time.
+const UPLOAD_ALARM = 'frty2-watch-upload';
+
+async function resumeUploads() {
+  const recordings = await WatchStore.listRecordings();
+  const stored = await chrome.storage.local.get(EXPERT_KEY);
+  const account = stored[EXPERT_KEY] && stored[EXPERT_KEY].token ? {kind: 'account', ...stored[EXPERT_KEY]} : null;
+  let sent = 0;
+  for (const rec of recordings) {
+    const upload = rec.upload || {};
+    if (rec.state === 'recording') {
+      // No recorder is running it and it has not been written to for a while:
+      // the browser closed mid-recording. Close it with what arrived.
+      const live = watch.state !== 'idle' || (await recorder({type: 'status'}).then((r) => r && r.status && r.status.state !== 'idle', () => false));
+      if (live || Date.now() - (rec.t0 || 0) < 120000) continue;
+      await WatchStore.closeOrphan(rec);
+    }
+    if (!upload.created) continue;
+    if (upload.error && WatchStore.FATAL.includes(upload.error.code)) continue;
+    if (upload.finished && !(await WatchStore.countPending(rec.id))) continue;
+    const who = upload.kind === 'session' && upload.token ? {kind: 'session', api_base: upload.api_base, token: upload.token} : account;
+    if (!who) continue;
+    const result = await WatchStore.sync(rec.id, who, {limit: 200});
+    sent += result.sent || 0;
+    chrome.runtime.sendMessage({type: 'watch_upload', id: rec.id, result}).catch(() => {});
+  }
+  return {ok: true, sent};
+}
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === UPLOAD_ALARM) resumeUploads().catch(() => {});
+});
+chrome.alarms.get(UPLOAD_ALARM).then((alarm) => {
+  if (!alarm) chrome.alarms.create(UPLOAD_ALARM, {delayInMinutes: 0.5, periodInMinutes: 1});
+});
+chrome.runtime.onStartup.addListener(() => { resumeUploads().catch(() => {}); });
+
 // A worker that restarts mid-recording finds the recorder again, or learns
 // that it is gone (the recordings page then shows that recording as cut short).
 (async () => {
@@ -597,7 +648,8 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
 //                          tutor_nav {id, url}        a navigate action is leaving this page
 //                          tutor_open_setup, tutor_need_eyes (the start card was clicked)
 //   from tutor-audio.js:   tutor_from_audio {tabId, msg}   relayed to the tab as {type: "tutor_msg", msg}
-// To tutor.js also: {type: "tutor_end", reason}.
+// To tutor.js also: {type: "tutor_end", reason}. To the page that started the
+// lesson (through bridge.js): {type: "tutor_ended", byte_id, reason, done}.
 
 const TUTOR_KEY = 'frty2_tutor';            // chrome.storage.session: survives a worker restart
 // Injected in this order on every page of the tutor's tab: placement, the
@@ -725,7 +777,9 @@ async function startTutor(message, sender) {
   try {
     const tab = await tutorTab(appUrl, sender && sender.tab);
     tutor = {tabId: tab.id, api_base: apiBase, byte_id: message.byte_id, language: message.language || 'en', origin,
-             cache: {}, actions: [], overlays: {}, paused: false, pendingNav: null, navByTutor: false, started_at: Date.now()};
+             cache: {}, actions: [], overlays: {}, paused: false, pendingNav: null, navByTutor: false, started_at: Date.now(),
+             // The page that started it (a lesson or module page) hears when it ends.
+             fromTabId: sender && sender.tab && sender.tab.id !== tab.id ? sender.tab.id : null};
     await saveTutor();
     await chrome.scripting.executeScript({target: {tabId: tab.id}, files: TUTOR_FILES});
     const [{result: page}] = await chrome.scripting.executeScript({
@@ -753,9 +807,13 @@ async function startTutor(message, sender) {
 async function stopTutor(reason, {sendStop = true} = {}) {
   await tutorLoaded;
   if (!tutor) return {ok: false, error: 'not_running'};
-  const {tabId} = tutor;
+  const {tabId, fromTabId, byte_id: byteId, cache} = tutor;
   tutor = null;
   await saveTutor();
+  if (fromTabId !== null && fromTabId !== undefined) {
+    const done = Boolean(cache && cache.bye && cache.bye.reason === 'done');
+    chrome.tabs.sendMessage(fromTabId, {type: 'tutor_ended', byte_id: byteId, reason, done}, () => void chrome.runtime.lastError);
+  }
   if (sendStop) await toTutorAudio({type: 'send', msg: {type: 'control', action: 'stop'}}).catch(() => {});
   await toTutorAudio({type: 'close', reason}).catch(() => {});
   toTutorTab(tabId, {type: 'tutor_end', reason});
