@@ -12,6 +12,11 @@
  * and, when that lesson ends, `frty2:tutor_ended {byte_id, reason, done}`.
  */
 
+// The manifest and the partner-origin registration (background.js) may both
+// put this script on a page; one copy answers.
+if (!globalThis.__frty2Bridge) {
+globalThis.__frty2Bridge = true;
+
 window.addEventListener('message', (event) => {
   if (event.source !== window) return;
   const data = event.data;
@@ -69,6 +74,11 @@ window.addEventListener('message', (event) => {
 // A lesson this page started has ended (finished, stopped, its tab closed):
 // the module page uses it to offer the next lesson.
 chrome.runtime.onMessage.addListener((message) => {
+  // The host is waiting on the learner (the iPad app's permission step) before
+  // it answers tutor_start: the page waits longer.
+  if (message && message.type === 'tutor_pending') {
+    window.postMessage({type: 'frty2:tutor_pending', byte_id: message.byte_id}, '*');
+  }
   if (message && message.type === 'tutor_ended') {
     window.postMessage({type: 'frty2:tutor_ended', byte_id: message.byte_id, reason: message.reason, done: Boolean(message.done)}, '*');
   }
@@ -77,3 +87,4 @@ chrome.runtime.onMessage.addListener((message) => {
 
 // Announce presence once, for pages that loaded before the listener.
 window.postMessage({type: 'frty2:pong', version: chrome.runtime.getManifest().version}, '*');
+}

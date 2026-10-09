@@ -614,6 +614,71 @@ chrome.alarms.get(UPLOAD_ALARM).then((alarm) => {
 });
 chrome.runtime.onStartup.addListener(() => { resumeUploads().catch(() => {}); });
 
+// ------------------------------------------------------------------ partner pages
+// Another learning platform (a Frty2 partner) starts lessons from its own
+// pages with the same frty2:* messages Backstage uses. The API lists those
+// pages' origins (GET /api/partner/v1/extension -> bridge_origins); bridge.js
+// is registered on the ones this extension may read, which the tutor's own
+// setup ("Allow" on all sites) already grants. Refreshed on start, every six
+// hours, when access is granted, and when a page names a new API.
+
+const PARTNER_BRIDGE_ID = 'frty2-partner-bridge';
+const PARTNER_ALARM = 'frty2-partner-origins';
+const PARTNER_DEFAULT_API = 'https://api.frty2.wawm.ai';
+
+function staticBridgeMatches(origin) {
+  const scripts = chrome.runtime.getManifest().content_scripts || [];
+  const patterns = scripts.filter((c) => (c.js || []).includes('bridge.js')).flatMap((c) => c.matches || []);
+  return patterns.some((pattern) => {
+    const m = /^(https?|\*):\/\/([^/]+)\//.exec(pattern);
+    if (!m) return false;
+    const url = new URL(origin);
+    if (m[1] !== '*' && `${m[1]}:` !== url.protocol) return false;
+    const host = m[2];
+    return host.startsWith('*.') ? url.hostname.endsWith(host.slice(1)) || url.hostname === host.slice(2) : url.host === host || url.hostname === host;
+  });
+}
+
+async function syncPartnerBridge() {
+  const {frty2_api_base: stored} = await chrome.storage.local.get('frty2_api_base');
+  const bases = [...new Set([stored, PARTNER_DEFAULT_API].filter(Boolean))];
+  const origins = new Set();
+  for (const base of bases) {
+    try {
+      const response = await fetch(`${base.replace(/\/$/, '')}/api/partner/v1/extension`);
+      if (!response.ok) continue;
+      for (const origin of (await response.json()).bridge_origins || []) {
+        if (/^https?:\/\/[^/]+$/.test(origin)) origins.add(origin);
+      }
+    } catch { /* that API is not reachable now; the next sync tries again */ }
+  }
+  const matches = [];
+  for (const origin of origins) {
+    if (staticBridgeMatches(origin)) continue;            // the manifest already runs the bridge there
+    if (await chrome.permissions.contains({origins: [`${origin}/*`]})) matches.push(`${origin}/*`);
+  }
+  try { await chrome.scripting.unregisterContentScripts({ids: [PARTNER_BRIDGE_ID]}); } catch {}
+  if (matches.length) {
+    await chrome.scripting.registerContentScripts([{
+      id: PARTNER_BRIDGE_ID, matches, js: ['bridge.js'], runAt: 'document_idle', persistAcrossSessions: true,
+    }]);
+  }
+  return matches;
+}
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === PARTNER_ALARM) syncPartnerBridge().catch(() => {});
+});
+chrome.alarms.get(PARTNER_ALARM).then((alarm) => {
+  if (!alarm) chrome.alarms.create(PARTNER_ALARM, {delayInMinutes: 0.1, periodInMinutes: 360});
+});
+chrome.runtime.onStartup.addListener(() => { syncPartnerBridge().catch(() => {}); });
+chrome.runtime.onInstalled.addListener(() => { syncPartnerBridge().catch(() => {}); });
+chrome.permissions.onAdded.addListener(() => { syncPartnerBridge().catch(() => {}); });
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.frty2_api_base) syncPartnerBridge().catch(() => {});
+});
+
 // A worker that restarts mid-recording finds the recorder again, or learns
 // that it is gone (the recordings page then shows that recording as cut short).
 (async () => {

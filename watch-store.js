@@ -307,7 +307,8 @@ masked: use "Private" (pause) while such things are on screen.
     else if (body !== undefined) { init.body = JSON.stringify(body); init.headers['Content-Type'] = 'application/json'; }
     let response;
     try {
-      response = await fetch(`${account.api_base}${path}`, init);
+      // An address saved with a trailing slash made every path "//api/v1/…", a 404.
+      response = await fetch(`${account.api_base.replace(/\/+$/, '')}${path}`, init);
     } catch (error) {
       throw new UploadError('offline', `Cannot reach ${account.api_base} (${error.message}).`);
     }
@@ -348,8 +349,9 @@ masked: use "Private" (pause) while such things are on screen.
       if (!recording) return {ok: false, code: 'missing'};
       if (!(recording.upload && recording.upload.created)) {
         const created = await request(account, 'POST', base, {
-          id, title: recording.meta.title || '', intent: recording.meta.intent || '',
-          app_url: recording.meta.url || '', languages: recording.meta.languages || [],
+          // The server's limits: a longer page title or URL is a 400 on every retry.
+          id, title: (recording.meta.title || '').slice(0, 255), intent: recording.meta.intent || '',
+          app_url: (recording.meta.url || '').slice(0, 2048), languages: recording.meta.languages || [],
           started_at: new Date(recording.t0).toISOString(), meta: recording.meta,
           session: account.kind === 'session' ? undefined : recording.meta.session_id || undefined,
         });

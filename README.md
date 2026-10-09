@@ -61,7 +61,7 @@ pill and the recordings page show the ones actually assigned; change them at
 `chrome://extensions/shortcuts`): `Alt+Shift+O` start/stop, `Alt+Shift+K`
 step, `Alt+Shift+M` private, `Alt+Shift+U` oops (drop the last 10 s).
 
-**Expert sessions.** Backstage (Web apps → Expert capture) registers an app
+**Expert sessions.** Backstage (Web apps → Apps) registers an app
 and plans sessions in it. A session page's **Record now in <app>**, or
 the public recording page its link opens (`/record/<token>`, for an expert
 with no Backstage account), hands the extension the session: the popup then
@@ -228,7 +228,7 @@ button after replacing the folder (or Load unpacked the new folder).
 | --- | --- |
 | `manifest.json` | MV3. Content scripts on `crm.zoho.in/.com/.eu` and on the learner app origins. |
 | `background.js` | Holds the pairing; relays every API call with the token; notifies Zoho tabs when pairing changes; runs Watch; starts, stops and routes the tutor. |
-| `bridge.js` | On the learner app and Backstage: forwards `frty2:pair`, `frty2:watch_session` and `frty2:tutor_start`/`_stop` messages, answers `frty2:ping`. |
+| `bridge.js` | On the learner app, Backstage and partner platforms' pages: forwards `frty2:pair`, `frty2:watch_session` and `frty2:tutor_start`/`_stop` messages, answers `frty2:ping`. Partner origins are not in the manifest: `background.js` (`syncPartnerBridge`) reads them from `GET /api/partner/v1/extension` and registers the bridge on those it has access to (every six hours, on start, when access is granted). One copy answers per page. |
 | `ghost.js` | The overlay (shadow DOM, top layer): cursor, spotlight, captions, panel with mic and question box; the script runner; the queue poller. |
 | `offscreen.html/js` | The speaker: plays narration clips for the service worker. Also hosts the Watch recorder and the tutor's line (`tutor-audio.js`). |
 | `popup.html/js` | Start/stop Watch; the learner pairing status and the code fallback. |

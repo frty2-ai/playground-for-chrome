@@ -1211,7 +1211,8 @@
     if (ui.paused) return ['paused', 'Paused'];
     // Who has the floor, from the server: its words, in the lesson's language.
     const DOT = {listening: 'listening', thinking: 'thinking', speaking: 'speaking', watching: 'watching',
-                 waiting: 'waiting', paused: 'paused', reconnecting: 'reconnecting', restoring: 'thinking'};
+                 waiting: 'waiting', paused: 'paused', reconnecting: 'reconnecting', restoring: 'thinking',
+                 looking: 'thinking'};
     if (ui.floor && DOT[ui.floor]) return [DOT[ui.floor], ui.floorText || ui.floor];
     if (ui.speaking) return ['speaking', 'Speaking'];
     return ['listening', 'Listening'];
